@@ -1,0 +1,27 @@
+service: two-back
+frameworkVersion: '1'
+
+provider:
+  name: aws
+  runtime: go1.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-northeast-1'}
+  stackName: ${opt:stack-name, 'two-back'}
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  problem:
+    handler: bin/problem
+    events:
+      - http:
+          path: problem
+          method: get
+          request:
+            parameters:
+              querystrings:
+                num: false
