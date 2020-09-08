@@ -1,0 +1,11 @@
+{
+  "name": "two-back",
+  "version": "1.0.0",
+  "description": "",
+  "author": "uu64",
+  "license": "UNLICENSED",
+  "private": "true",
+  "devDependencies": {
+    "serverless-offline": "^6.7.0"
+  }
+}
