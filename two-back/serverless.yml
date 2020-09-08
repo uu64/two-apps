@@ -8,6 +8,13 @@ provider:
   region: ${opt:region, 'ap-northeast-1'}
   stackName: ${opt:stack-name, 'two-back'}
 
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    useDocker: true
+
 package:
   exclude:
     - ./**
