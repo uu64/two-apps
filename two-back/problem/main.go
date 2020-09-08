@@ -11,35 +11,44 @@ import (
 	"time"
 )
 
+type Request events.APIGatewayProxyRequest
 type Response events.APIGatewayProxyResponse
 
-func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
+func Handler(ctx context.Context, request Request) (Response, error) {
 	q := request.QueryStringParameters
 	num := 3
 	if v, ok := q["num"]; ok {
 		num, _ = strconv.Atoi(v)
 	}
 
-	var buf bytes.Buffer
+	if num > 10 || num < 0 {
+		return createResponse(400, map[string]interface{}{
+			"message": "invalid parameter!",
+		})
+	}
 
-	body, err := json.Marshal(map[string]interface{}{
+	return createResponse(200, map[string]interface{}{
 		"problem": createProblem(num),
 	})
+}
+
+func createResponse(code int, data map[string]interface{}) (Response, error) {
+	var buf bytes.Buffer
+
+	body, err := json.Marshal(data)
 	if err != nil {
-		return Response{StatusCode: 404}, err
+		code = 500
 	}
 	json.HTMLEscape(&buf, body)
 
-	resp := Response{
-		StatusCode:      200,
+	return Response{
+		StatusCode:      code,
 		IsBase64Encoded: false,
 		Body:            buf.String(),
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},
-	}
-
-	return resp, nil
+	}, err
 }
 
 func createProblem(num int) []int {
