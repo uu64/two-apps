@@ -8,6 +8,12 @@ provider:
   region: ${opt:region, 'ap-northeast-1'}
   stackName: ${opt:stack-name, 'two-back'}
   websocketsApiRouteSelectionExpression: $request.body.action
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+        - sqs:*
+      Resource: '*'
 
 plugins:
   - serverless-offline
@@ -33,7 +39,52 @@ functions:
             parameters:
               querystrings:
                 num: false
-  coonectHandler:
+  join:
     handler: bin/game/join
     events:
-      - websocket: $connect
+      - websocket:
+          route: $connect
+  leave:
+    handler: bin/game/leave
+    events:
+      - websocket:
+          route: $disconnect
+  publish:
+    handler: bin/game/publish
+    events:
+      - websocket:
+          route: publish
+
+resources:
+  Resources:
+    rooms:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: rooms
+        AttributeDefinitions:
+          - AttributeName: RoomID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: RoomID
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    users:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: users
+        AttributeDefinitions:
+          - AttributeName: ConnectionID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: ConnectionID
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    matching:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: matching
+        MessageRetentionPeriod: 180
