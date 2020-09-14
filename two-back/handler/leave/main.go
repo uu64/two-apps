@@ -12,30 +12,20 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/uu64/two-apps/two-back/common"
 )
 
 type request events.APIGatewayWebsocketProxyRequest
 type response events.APIGatewayProxyResponse
-
-type room struct {
-	RoomID  string
-	User1ID string
-	User2ID string
-}
-
-type user struct {
-	ConnectionID string
-	RoomID       string
-}
+type room common.Room
+type user common.User
 
 var dynamoSvc *dynamodb.DynamoDB
 var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
-var roomTableName string = "rooms"
-var userTableName string = "users"
 
 func getRoomID(connectionID string) (string, error) {
 	userResult, err := dynamoSvc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(userTableName),
+		TableName: aws.String(common.UserTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"ConnectionID": {
 				S: aws.String(connectionID),
@@ -60,7 +50,7 @@ func getRoomID(connectionID string) (string, error) {
 
 func getUsers(roomID string) (string, string, error) {
 	roomResult, err := dynamoSvc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(roomTableName),
+		TableName: aws.String(common.RoomTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"RoomID": {
 				S: aws.String(roomID),
@@ -85,7 +75,7 @@ func getUsers(roomID string) (string, string, error) {
 
 func deleteUser(userID string) error {
 	_, err := dynamoSvc.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: aws.String(userTableName),
+		TableName: aws.String(common.UserTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"ConnectionID": {
 				S: aws.String(userID),
@@ -100,7 +90,7 @@ func deleteUser(userID string) error {
 
 func deleteRoom(roomID string) error {
 	_, err := dynamoSvc.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: aws.String(roomTableName),
+		TableName: aws.String(common.RoomTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"RoomID": {
 				S: aws.String(roomID),

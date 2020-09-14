@@ -12,37 +12,23 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/google/uuid"
+	"github.com/uu64/two-apps/two-back/common"
 )
 
 type request events.APIGatewayWebsocketProxyRequest
 type response events.APIGatewayProxyResponse
-
-type room struct {
-	RoomID  string
-	Status  string
-	User1ID string
-	User2ID string
-}
-
-type user struct {
-	ConnectionID string
-	RoomID       string
-}
+type room common.Room
+type user common.User
 
 var sqsSvc *sqs.SQS
 var dynamoSvc *dynamodb.DynamoDB
-var matchingQueueName string = "matching"
-var roomTableName string = "rooms"
-var userTableName string = "users"
-var roomStatusWaiting string = "WAITING"
-var roomStatusPlaying string = "PLAYING"
 
 func getMessage() ([]sqs.Message, error) {
 	messages := []sqs.Message{}
 
 	// receive message from sqs
 	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &matchingQueueName,
+		QueueName: &common.MatchingQueueName,
 	})
 	if err != nil {
 		return messages, err
@@ -76,7 +62,7 @@ func createRoom(connectionID string) (string, error) {
 	roomID := uuidObj.String()
 	roomItem := room{
 		RoomID:  roomID,
-		Status:  roomStatusWaiting,
+		Status:  common.RoomStatusWaiting,
 		User1ID: connectionID,
 	}
 	roomAv, err := dynamodbattribute.MarshalMap(roomItem)
@@ -85,7 +71,7 @@ func createRoom(connectionID string) (string, error) {
 	}
 	_, err = dynamoSvc.PutItem(&dynamodb.PutItemInput{
 		Item:      roomAv,
-		TableName: aws.String(roomTableName),
+		TableName: aws.String(common.RoomTableName),
 	})
 	if err != nil {
 		return "", err
@@ -93,7 +79,7 @@ func createRoom(connectionID string) (string, error) {
 
 	// send message to sqs and wait a new challenger
 	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &matchingQueueName,
+		QueueName: &common.MatchingQueueName,
 	})
 	if err != nil {
 		return "", err
@@ -122,7 +108,7 @@ func addUser(roomID string, connectionID string) error {
 	}
 	_, err = dynamoSvc.PutItem(&dynamodb.PutItemInput{
 		Item:      userAv,
-		TableName: aws.String(userTableName),
+		TableName: aws.String(common.UserTableName),
 	})
 	if err != nil {
 		return err
@@ -142,10 +128,10 @@ func updateRoom(roomID string, connectionID string, receiptHandle string) error 
 				S: aws.String(connectionID),
 			},
 			":st": {
-				S: aws.String(roomStatusPlaying),
+				S: aws.String(common.RoomStatusPlaying),
 			},
 		},
-		TableName: aws.String(roomTableName),
+		TableName: aws.String(common.RoomTableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"RoomID": {
 				S: aws.String(roomID),
@@ -160,7 +146,7 @@ func updateRoom(roomID string, connectionID string, receiptHandle string) error 
 
 	// delete message
 	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &matchingQueueName,
+		QueueName: &common.MatchingQueueName,
 	})
 	if err != nil {
 		return err
