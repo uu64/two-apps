@@ -40,17 +40,17 @@ functions:
               querystrings:
                 num: false
   join:
-    handler: bin/game/join
+    handler: bin/join
     events:
       - websocket:
           route: $connect
   leave:
-    handler: bin/game/leave
+    handler: bin/leave
     events:
       - websocket:
           route: $disconnect
   publish:
-    handler: bin/game/publish
+    handler: bin/publish
     events:
       - websocket:
           route: publish
