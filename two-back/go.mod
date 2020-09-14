@@ -1,4 +1,4 @@
-module github.com/two-apps/two-back
+module github.com/uu64/two-apps/two-back
 
 go 1.15
 
