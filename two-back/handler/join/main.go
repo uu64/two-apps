@@ -19,6 +19,7 @@ type response events.APIGatewayProxyResponse
 
 type room struct {
 	RoomID  string
+	Status  string
 	User1ID string
 	User2ID string
 }
@@ -33,6 +34,8 @@ var dynamoSvc *dynamodb.DynamoDB
 var matchingQueueName string = "matching"
 var roomTableName string = "rooms"
 var userTableName string = "users"
+var roomStatusWaiting string = "WAITING"
+var roomStatusPlaying string = "PLAYING"
 
 func getMessage() ([]sqs.Message, error) {
 	messages := []sqs.Message{}
@@ -73,6 +76,7 @@ func createRoom(connectionID string) (string, error) {
 	roomID := uuidObj.String()
 	roomItem := room{
 		RoomID:  roomID,
+		Status:  roomStatusWaiting,
 		User1ID: connectionID,
 	}
 	roomAv, err := dynamodbattribute.MarshalMap(roomItem)
@@ -130,9 +134,15 @@ func addUser(roomID string, connectionID string) error {
 func updateRoom(roomID string, connectionID string, receiptHandle string) error {
 	// update room
 	_, err := dynamoSvc.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#st": aws.String("Status"),
+		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":id": {
 				S: aws.String(connectionID),
+			},
+			":st": {
+				S: aws.String(roomStatusPlaying),
 			},
 		},
 		TableName: aws.String(roomTableName),
@@ -142,7 +152,7 @@ func updateRoom(roomID string, connectionID string, receiptHandle string) error 
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set User2ID = :id"),
+		UpdateExpression: aws.String("set User2ID = :id, #st = :st"),
 	})
 	if err != nil {
 		return err
