@@ -98,3 +98,34 @@ func Delete(svc *dynamodb.DynamoDB, id string) error {
 	}
 	return nil
 }
+
+// AddUser adds the user to the room
+func AddUser(svc *dynamodb.DynamoDB, id string, userID string) error {
+	_, err := svc.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#st": aws.String("Status"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":id": {
+				S: aws.String(userID),
+			},
+			":st": {
+				S: aws.String(RoomStatusPlaying),
+			},
+		},
+		TableName: aws.String(roomTableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"RoomID": {
+				S: aws.String(id),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set User2ID = :id, #st = :st"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
