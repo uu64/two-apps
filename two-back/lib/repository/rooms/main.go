@@ -51,14 +51,16 @@ func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
 	return item.User1ID, item.User2ID, nil
 }
 
-// Create deletes the room with the id
-func Create(svc *dynamodb.DynamoDB, userID string) error {
+// Create creates the room and returns the room-id
+func Create(svc *dynamodb.DynamoDB, userID string) (string, error) {
+	var roomID string
+
 	uuidObj, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return roomID, err
 	}
 
-	roomID := uuidObj.String()
+	roomID = uuidObj.String()
 	item := Room{
 		RoomID:  roomID,
 		Status:  RoomStatusWaiting,
@@ -67,7 +69,7 @@ func Create(svc *dynamodb.DynamoDB, userID string) error {
 
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
-		return err
+		return roomID, err
 	}
 
 	_, err = svc.PutItem(&dynamodb.PutItemInput{
@@ -75,10 +77,10 @@ func Create(svc *dynamodb.DynamoDB, userID string) error {
 		TableName: aws.String(roomTableName),
 	})
 	if err != nil {
-		return err
+		return roomID, err
 	}
 
-	return nil
+	return roomID, nil
 }
 
 // Delete deletes the room with the id
