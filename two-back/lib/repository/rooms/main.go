@@ -25,8 +25,9 @@ var RoomStatusWaiting string = "WAITING"
 // RoomStatusPlaying is status of the rooms table item
 var RoomStatusPlaying string = "PLAYING"
 
-// Users returns the connection-id of the user in the room
-func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
+func getItem(svc *dynamodb.DynamoDB, id string) (Room, error) {
+	room := Room{}
+
 	result, err := svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(roomTableName),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -36,19 +37,27 @@ func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
 		},
 	})
 	if err != nil {
-		return "", "", err
+		return room, err
 	}
 
 	if result.Item == nil {
-		return "", "", errors.New("room is not exist")
+		return room, errors.New("room is not exist")
 	}
 
-	item := Room{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	if err != nil {
-		return "", "", err
-	}
-	return item.User1ID, item.User2ID, nil
+	err = dynamodbattribute.UnmarshalMap(result.Item, &room)
+	return room, err
+}
+
+// Users returns the connection-id of the user in the room
+func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
+	room, err := getItem(svc, id)
+	return room.User1ID, room.User2ID, err
+}
+
+// Status returns the status of the room
+func Status(svc *dynamodb.DynamoDB, id string) (string, error) {
+	room, err := getItem(svc, id)
+	return room.Status, err
 }
 
 // Create creates a room and returns the room-id
