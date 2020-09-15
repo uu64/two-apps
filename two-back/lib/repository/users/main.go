@@ -48,6 +48,28 @@ func RoomID(svc *dynamodb.DynamoDB, id string) (string, error) {
 	return item.RoomID, nil
 }
 
+// Create creates a user
+func Create(svc *dynamodb.DynamoDB, connectionID string, roomID string) error {
+	item := User{
+		ConnectionID: connectionID,
+		RoomID:       roomID,
+	}
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
+		return err
+	}
+
+	_, err = svc.PutItem(&dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(userTableName),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Delete deletes the user with the id
 func Delete(svc *dynamodb.DynamoDB, id string) error {
 	_, err := svc.DeleteItem(&dynamodb.DeleteItemInput{

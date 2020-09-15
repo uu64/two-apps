@@ -51,7 +51,7 @@ func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
 	return item.User1ID, item.User2ID, nil
 }
 
-// Create creates the room and returns the room-id
+// Create creates a room and returns the room-id
 func Create(svc *dynamodb.DynamoDB, userID string) (string, error) {
 	var roomID string
 
