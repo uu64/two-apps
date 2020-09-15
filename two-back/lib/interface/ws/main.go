@@ -13,13 +13,13 @@ func Disconnect(svc *apigatewaymanagementapi.ApiGatewayManagementApi, endpoint s
 }
 
 // Send send a message to the specified users
-func Send(svc *apigatewaymanagementapi.ApiGatewayManagementApi, endpoint string, connectionIDs []string, message string) {
+func Send(svc *apigatewaymanagementapi.ApiGatewayManagementApi, endpoint string, connectionIDs []string, message []byte) {
 	svc.Endpoint = endpoint
 
 	for _, id := range connectionIDs {
 		svc.PostToConnection(&apigatewaymanagementapi.PostToConnectionInput{
 			ConnectionId: &id,
-			Data:         []byte(message),
+			Data:         message,
 		})
 	}
 }
