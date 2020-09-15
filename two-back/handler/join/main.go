@@ -6,159 +6,54 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/google/uuid"
-	"github.com/uu64/two-apps/two-back/common"
+	myqueue "github.com/uu64/two-apps/two-back/lib/interface/sqs"
+	"github.com/uu64/two-apps/two-back/lib/repository/rooms"
+	"github.com/uu64/two-apps/two-back/lib/repository/users"
 )
 
 type request events.APIGatewayWebsocketProxyRequest
 type response events.APIGatewayProxyResponse
-type room common.Room
-type user common.User
 
 var sqsSvc *sqs.SQS
 var dynamoSvc *dynamodb.DynamoDB
+var queueName string = "matching"
 
-func getMessage() ([]sqs.Message, error) {
-	messages := []sqs.Message{}
-
-	// receive message from sqs
-	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &common.MatchingQueueName,
-	})
-	if err != nil {
-		return messages, err
-	}
-
-	msgResult, err := sqsSvc.ReceiveMessage(&sqs.ReceiveMessageInput{
-		AttributeNames: []*string{
-			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
-		},
-		MessageAttributeNames: []*string{
-			aws.String(sqs.QueueAttributeNameAll),
-		},
-		QueueUrl:            urlResult.QueueUrl,
-		MaxNumberOfMessages: aws.Int64(1),
-		VisibilityTimeout:   aws.Int64(30),
-	})
-
-	if len(msgResult.Messages) > 0 {
-		messages = append(messages, *msgResult.Messages[0])
-	}
-	return messages, nil
+func getMessage() ([]*sqs.Message, error) {
+	message, err := myqueue.ReceiveMessage(sqsSvc, queueName)
+	return message.Messages, err
 }
 
 func createRoom(connectionID string) (string, error) {
-	// create room
-	uuidObj, err := uuid.NewRandom()
-	if err != nil {
-		return "", err
-	}
+	var roomID string
 
-	roomID := uuidObj.String()
-	roomItem := room{
-		RoomID:  roomID,
-		Status:  common.RoomStatusWaiting,
-		User1ID: connectionID,
-	}
-	roomAv, err := dynamodbattribute.MarshalMap(roomItem)
+	// create room
+	roomID, err := rooms.Create(dynamoSvc, connectionID)
 	if err != nil {
-		return "", err
-	}
-	_, err = dynamoSvc.PutItem(&dynamodb.PutItemInput{
-		Item:      roomAv,
-		TableName: aws.String(common.RoomTableName),
-	})
-	if err != nil {
-		return "", err
+		return roomID, err
 	}
 
 	// send message to sqs and wait a new challenger
-	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &common.MatchingQueueName,
-	})
-	if err != nil {
-		return "", err
-	}
-	_, err = sqsSvc.SendMessage(&sqs.SendMessageInput{
-		DelaySeconds: aws.Int64(1),
-		MessageBody:  &roomID,
-		QueueUrl:     urlResult.QueueUrl,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return roomID, nil
+	err = myqueue.SendMessage(sqsSvc, queueName, roomID)
+	return roomID, err
 }
 
-func addUser(roomID string, connectionID string) error {
-	// add user
-	userItem := user{
-		ConnectionID: connectionID,
-		RoomID:       roomID,
-	}
-	userAv, err := dynamodbattribute.MarshalMap(userItem)
-	if err != nil {
-		return err
-	}
-	_, err = dynamoSvc.PutItem(&dynamodb.PutItemInput{
-		Item:      userAv,
-		TableName: aws.String(common.UserTableName),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+func addUser(connectionID string, roomID string) error {
+	return users.Create(dynamoSvc, connectionID, roomID)
 }
 
 func updateRoom(roomID string, connectionID string, receiptHandle string) error {
 	// update room
-	_, err := dynamoSvc.UpdateItem(&dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#st": aws.String("Status"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":id": {
-				S: aws.String(connectionID),
-			},
-			":st": {
-				S: aws.String(common.RoomStatusPlaying),
-			},
-		},
-		TableName: aws.String(common.RoomTableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"RoomID": {
-				S: aws.String(roomID),
-			},
-		},
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set User2ID = :id, #st = :st"),
-	})
+	err := rooms.AddUser(dynamoSvc, roomID, connectionID)
 	if err != nil {
 		return err
 	}
 
 	// delete message
-	urlResult, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &common.MatchingQueueName,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = sqsSvc.DeleteMessage(&sqs.DeleteMessageInput{
-		QueueUrl:      urlResult.QueueUrl,
-		ReceiptHandle: &receiptHandle,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
+	err = myqueue.DeleteMessage(sqsSvc, queueName, receiptHandle)
+	return err
 }
 
 func handler(ctx context.Context, request request) (response, error) {
@@ -187,7 +82,7 @@ func handler(ctx context.Context, request request) (response, error) {
 		return response{StatusCode: 500}, nil
 	}
 
-	err = addUser(roomID, connectionID)
+	err = addUser(connectionID, roomID)
 	if err != nil {
 		fmt.Println(err)
 		return response{StatusCode: 500}, nil

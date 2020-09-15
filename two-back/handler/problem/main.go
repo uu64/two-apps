@@ -1,61 +1,137 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/uu64/two-apps/two-back/lib/interface/ws"
+	"github.com/uu64/two-apps/two-back/lib/repository/rooms"
+	"github.com/uu64/two-apps/two-back/lib/repository/users"
 )
 
-type Request events.APIGatewayProxyRequest
-type Response events.APIGatewayProxyResponse
+type request events.APIGatewayWebsocketProxyRequest
+type response events.APIGatewayProxyResponse
 
-func handler(ctx context.Context, request Request) (Response, error) {
-	q := request.QueryStringParameters
-	num := 3
-	if v, ok := q["num"]; ok {
-		num, _ = strconv.Atoi(v)
+var dynamoSvc *dynamodb.DynamoDB
+var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
+
+type message struct {
+	Level int `json:"level"`
+}
+
+type reply struct {
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}
+
+func getRoomStatus(connectionID string) (string, error) {
+	roomID, err := users.RoomID(dynamoSvc, connectionID)
+	if err != nil {
+		return roomID, err
 	}
+	return rooms.Status(dynamoSvc, roomID)
+}
+
+func getRoomUsers(connectionID string) ([]string, error) {
+	var userList []string
+
+	roomID, err := users.RoomID(dynamoSvc, connectionID)
+	if err != nil {
+		return userList, err
+	}
+	return rooms.Users(dynamoSvc, roomID)
+}
+
+func onWaiting(endpoint string, connectionID string) error {
+	reply := reply{
+		Message: "PLEASE_WAIT",
+	}
+
+	data, err := json.Marshal(&reply)
+	if err != nil {
+		return err
+	}
+	ws.Send(agwSvc, endpoint, []string{connectionID}, data)
+	return nil
+}
+
+func onPlaying(endpoint string, connectionID string, level int) error {
+	problem, err := createProblem(level)
+	if err != nil {
+		return err
+	}
+
+	connectionIDs, err := getRoomUsers(connectionID)
+	if err != nil {
+		return err
+	}
+
+	reply := reply{
+		Message: "START_GAME",
+		Data:    problem,
+	}
+	data, err := json.Marshal(&reply)
+	if err != nil {
+		return err
+	}
+
+	ws.Send(agwSvc, endpoint, connectionIDs, data)
+	return nil
+}
+
+func handler(ctx context.Context, request request) (response, error) {
+	connectionID := request.RequestContext.ConnectionID
+	endpoint := fmt.Sprintf("https://%s/%s",
+		request.RequestContext.DomainName, request.RequestContext.Stage)
+
+	// check room status
+	status, err := getRoomStatus(connectionID)
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, nil
+	}
+
+	if status == rooms.RoomStatusWaiting {
+		err = onWaiting(endpoint, connectionID)
+	}
+
+	if status == rooms.RoomStatusPlaying {
+		var message message
+		err = json.Unmarshal([]byte(request.Body), &message)
+		if err != nil {
+			fmt.Println(err)
+			return response{StatusCode: 500}, nil
+		}
+
+		err = onPlaying(endpoint, connectionID, message.Level)
+	}
+
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, nil
+	}
+
+	return response{StatusCode: 200}, nil
+}
+
+func createProblem(num int) ([]int, error) {
+	terms := make([]int, num)
 
 	if num > 10 || num < 0 {
-		return createResponse(400, map[string]interface{}{
-			"message": "invalid parameter!",
-		})
+		return terms, errors.New("INVALID_PARAMETER")
 	}
 
-	return createResponse(200, map[string]interface{}{
-		"problem": createProblem(num),
-	})
-}
-
-func createResponse(code int, data map[string]interface{}) (Response, error) {
-	var buf bytes.Buffer
-
-	body, err := json.Marshal(data)
-	if err != nil {
-		code = 500
-	}
-	json.HTMLEscape(&buf, body)
-
-	return Response{
-		StatusCode:      code,
-		IsBase64Encoded: false,
-		Body:            buf.String(),
-		Headers: map[string]string{
-			"Content-Type": "application/json",
-		},
-	}, err
-}
-
-func createProblem(num int) []int {
 	rand.Seed(time.Now().UnixNano())
 
-	terms := make([]int, num)
 	sum := 2
 	for i := 0; i < num-1; i++ {
 		term := rand.Intn(10)
@@ -69,7 +145,13 @@ func createProblem(num int) []int {
 	}
 	terms[0] = sum
 
-	return terms
+	return terms, nil
+}
+
+func init() {
+	session := session.New()
+	dynamoSvc = dynamodb.New(session)
+	agwSvc = apigatewaymanagementapi.New(session)
 }
 
 func main() {

@@ -2,112 +2,38 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/uu64/two-apps/two-back/common"
+	"github.com/uu64/two-apps/two-back/lib/interface/ws"
+	"github.com/uu64/two-apps/two-back/lib/repository/rooms"
+	"github.com/uu64/two-apps/two-back/lib/repository/users"
 )
 
 type request events.APIGatewayWebsocketProxyRequest
 type response events.APIGatewayProxyResponse
-type room common.Room
-type user common.User
 
 var dynamoSvc *dynamodb.DynamoDB
 var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
 
 func getRoomID(connectionID string) (string, error) {
-	userResult, err := dynamoSvc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(common.UserTableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"ConnectionID": {
-				S: aws.String(connectionID),
-			},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-
-	if userResult.Item == nil {
-		return "", errors.New("user is not exist")
-	}
-
-	userItem := user{}
-	err = dynamodbattribute.UnmarshalMap(userResult.Item, &userItem)
-	if err != nil {
-		return "", err
-	}
-	return userItem.RoomID, nil
+	return users.RoomID(dynamoSvc, connectionID)
 }
 
-func getUsers(roomID string) (string, string, error) {
-	roomResult, err := dynamoSvc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(common.RoomTableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"RoomID": {
-				S: aws.String(roomID),
-			},
-		},
-	})
-	if err != nil {
-		return "", "", err
-	}
-
-	if roomResult.Item == nil {
-		return "", "", errors.New("room is not exist")
-	}
-
-	roomItem := room{}
-	err = dynamodbattribute.UnmarshalMap(roomResult.Item, &roomItem)
-	if err != nil {
-		return "", "", err
-	}
-	return roomItem.User1ID, roomItem.User2ID, nil
+func getUsers(roomID string) ([]string, error) {
+	return rooms.Users(dynamoSvc, roomID)
 }
 
 func deleteUser(userID string) error {
-	_, err := dynamoSvc.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: aws.String(common.UserTableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"ConnectionID": {
-				S: aws.String(userID),
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return users.Delete(dynamoSvc, userID)
 }
 
 func deleteRoom(roomID string) error {
-	_, err := dynamoSvc.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: aws.String(common.RoomTableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"RoomID": {
-				S: aws.String(roomID),
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func deleteConnection(endpoint string, connectionID string) {
-	agwSvc.Endpoint = endpoint
-	agwSvc.DeleteConnection(&apigatewaymanagementapi.DeleteConnectionInput{
-		ConnectionId: &connectionID,
-	})
+	return rooms.Delete(dynamoSvc, roomID)
 }
 
 func handler(ctx context.Context, request request) (response, error) {
@@ -120,7 +46,7 @@ func handler(ctx context.Context, request request) (response, error) {
 		return response{StatusCode: 500}, nil
 	}
 
-	user1ID, user2ID, err := getUsers(roomID)
+	userList, err := getUsers(roomID)
 	if err != nil {
 		fmt.Println(err)
 		return response{StatusCode: 500}, nil
@@ -128,11 +54,13 @@ func handler(ctx context.Context, request request) (response, error) {
 
 	endpoint := fmt.Sprintf("https://%s/%s",
 		request.RequestContext.DomainName, request.RequestContext.Stage)
+	user1ID := userList[0]
+	user2ID := userList[1]
 	if user1ID == connectionID {
-		deleteConnection(endpoint, user2ID)
+		ws.Disconnect(agwSvc, endpoint, user2ID)
 	}
 	if user2ID == connectionID {
-		deleteConnection(endpoint, user1ID)
+		ws.Disconnect(agwSvc, endpoint, user1ID)
 	}
 
 	deleteUser(user1ID)

@@ -29,16 +29,6 @@ package:
     - ./bin/**
 
 functions:
-  problem:
-    handler: bin/problem
-    events:
-      - http:
-          path: problem
-          method: get
-          request:
-            parameters:
-              querystrings:
-                num: false
   join:
     handler: bin/join
     events:
@@ -54,6 +44,11 @@ functions:
     events:
       - websocket:
           route: publish
+  problem:
+    handler: bin/problem
+    events:
+      - websocket:
+          route: problem
 
 resources:
   Resources:
