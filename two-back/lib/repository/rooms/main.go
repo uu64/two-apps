@@ -49,9 +49,9 @@ func getItem(svc *dynamodb.DynamoDB, id string) (Room, error) {
 }
 
 // Users returns the connection-id of the user in the room
-func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
+func Users(svc *dynamodb.DynamoDB, id string) ([]string, error) {
 	room, err := getItem(svc, id)
-	return room.User1ID, room.User2ID, err
+	return []string{room.User1ID, room.User2ID}, err
 }
 
 // Status returns the status of the room
