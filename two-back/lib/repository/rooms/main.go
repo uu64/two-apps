@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/google/uuid"
 )
 
 var roomTableName string = "rooms"
@@ -48,6 +49,36 @@ func Users(svc *dynamodb.DynamoDB, id string) (string, string, error) {
 		return "", "", err
 	}
 	return item.User1ID, item.User2ID, nil
+}
+
+// Create deletes the room with the id
+func Create(svc *dynamodb.DynamoDB, userID string) error {
+	uuidObj, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+
+	roomID := uuidObj.String()
+	item := Room{
+		RoomID:  roomID,
+		Status:  RoomStatusWaiting,
+		User1ID: userID,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
+		return err
+	}
+
+	_, err = svc.PutItem(&dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(roomTableName),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Delete deletes the room with the id
