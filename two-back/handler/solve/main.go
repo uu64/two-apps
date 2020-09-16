@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/uu64/two-apps/two-back/lib/interface/ws"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/uu64/two-apps/two-back/lib/interface/ws"
 	"github.com/uu64/two-apps/two-back/lib/repository/rooms"
 	"github.com/uu64/two-apps/two-back/lib/repository/users"
 )
