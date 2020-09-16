@@ -5,7 +5,7 @@ build:
 	env GOOS=linux go build -ldflags="-s -w" -o bin/problem handler/problem/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/join handler/join/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/leave handler/leave/main.go
-	env GOOS=linux go build -ldflags="-s -w" -o bin/publish handler/publish/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/solve handler/solve/main.go
 
 clean:
 	rm -rf ./bin ./vendor Gopkg.lock

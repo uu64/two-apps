@@ -39,16 +39,16 @@ functions:
     events:
       - websocket:
           route: $disconnect
-  publish:
-    handler: bin/publish
-    events:
-      - websocket:
-          route: publish
   problem:
     handler: bin/problem
     events:
       - websocket:
           route: problem
+  solve:
+    handler: bin/solve
+    events:
+      - websocket:
+          route: solve
 
 resources:
   Resources:

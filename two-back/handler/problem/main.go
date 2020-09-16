@@ -24,11 +24,11 @@ type response events.APIGatewayProxyResponse
 var dynamoSvc *dynamodb.DynamoDB
 var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
 
-type data struct {
+type incoming struct {
 	Level int `json:"level"`
 }
 
-type reply struct {
+type outgoing struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
 }
@@ -52,11 +52,11 @@ func getRoomUsers(connectionID string) ([]string, error) {
 }
 
 func onWaiting(endpoint string, connectionID string) error {
-	reply := reply{
+	outgoing := outgoing{
 		Message: "PLEASE_WAIT",
 	}
 
-	data, err := json.Marshal(&reply)
+	data, err := json.Marshal(&outgoing)
 	if err != nil {
 		return err
 	}
@@ -75,11 +75,11 @@ func onPlaying(endpoint string, connectionID string, level int) error {
 		return err
 	}
 
-	reply := reply{
+	outgoing := outgoing{
 		Message: "START_GAME",
 		Data:    problem,
 	}
-	data, err := json.Marshal(&reply)
+	data, err := json.Marshal(&outgoing)
 	if err != nil {
 		return err
 	}
@@ -130,14 +130,14 @@ func handler(ctx context.Context, request request) (response, error) {
 	}
 
 	if status == rooms.RoomStatusPlaying {
-		var data data
-		err = json.Unmarshal([]byte(request.Body), &data)
+		var incoming incoming
+		err = json.Unmarshal([]byte(request.Body), &incoming)
 		if err != nil {
 			fmt.Println(err)
 			return response{StatusCode: 500}, err
 		}
 
-		err = onPlaying(endpoint, connectionID, data.Level)
+		err = onPlaying(endpoint, connectionID, incoming.Level)
 	}
 
 	if err != nil {
