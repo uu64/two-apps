@@ -29,8 +29,8 @@ type incoming struct {
 }
 
 type outgoing struct {
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Message string `json:"message"`
+	Problem []int  `json:"problem"`
 }
 
 func getRoomStatus(connectionID string) (string, error) {
@@ -51,41 +51,13 @@ func getRoomUsers(connectionID string) ([]string, error) {
 	return rooms.Users(dynamoSvc, roomID)
 }
 
-func onWaiting(endpoint string, connectionID string) error {
-	outgoing := outgoing{
-		Message: "PLEASE_WAIT",
-	}
-
-	data, err := json.Marshal(&outgoing)
-	if err != nil {
-		return err
-	}
-	ws.Send(agwSvc, endpoint, []string{connectionID}, data)
-	return nil
-}
-
-func onPlaying(endpoint string, connectionID string, level int) error {
-	problem, err := createProblem(level)
+func startGame(connectionID string, problem []int) error {
+	roomID, err := users.RoomID(dynamoSvc, connectionID)
 	if err != nil {
 		return err
 	}
 
-	connectionIDs, err := getRoomUsers(connectionID)
-	if err != nil {
-		return err
-	}
-
-	outgoing := outgoing{
-		Message: "START_GAME",
-		Data:    problem,
-	}
-	data, err := json.Marshal(&outgoing)
-	if err != nil {
-		return err
-	}
-
-	ws.Send(agwSvc, endpoint, connectionIDs, data)
-	return nil
+	return rooms.StartGame(dynamoSvc, roomID, problem)
 }
 
 func createProblem(num int) ([]int, error) {
@@ -113,6 +85,44 @@ func createProblem(num int) ([]int, error) {
 	return terms, nil
 }
 
+func reply(endpoint string, connectionIDs []string, message string, problem []int) error {
+	outgoing := outgoing{
+		Message: message,
+		Problem: problem,
+	}
+
+	data, err := json.Marshal(&outgoing)
+	if err != nil {
+		return err
+	}
+
+	ws.Send(agwSvc, endpoint, connectionIDs, data)
+	return nil
+}
+
+func onWaiting(endpoint string, connectionID string) error {
+	return reply(endpoint, []string{connectionID}, "PLEASE_WAIT", []int{})
+}
+
+func onPreparing(endpoint string, connectionID string, level int) error {
+	problem, err := createProblem(level)
+	if err != nil {
+		return err
+	}
+
+	err = startGame(connectionID, problem)
+	if err != nil {
+		return err
+	}
+
+	connectionIDs, err := getRoomUsers(connectionID)
+	if err != nil {
+		return err
+	}
+
+	return reply(endpoint, connectionIDs, "START_GAME", problem)
+}
+
 func handler(ctx context.Context, request request) (response, error) {
 	connectionID := request.RequestContext.ConnectionID
 	endpoint := fmt.Sprintf("https://%s/%s",
@@ -129,7 +139,7 @@ func handler(ctx context.Context, request request) (response, error) {
 		err = onWaiting(endpoint, connectionID)
 	}
 
-	if status == rooms.RoomStatusPlaying {
+	if status == rooms.RoomStatusPreparing {
 		var incoming incoming
 		err = json.Unmarshal([]byte(request.Body), &incoming)
 		if err != nil {
@@ -137,7 +147,7 @@ func handler(ctx context.Context, request request) (response, error) {
 			return response{StatusCode: 500}, err
 		}
 
-		err = onPlaying(endpoint, connectionID, incoming.Level)
+		err = onPreparing(endpoint, connectionID, incoming.Level)
 	}
 
 	if err != nil {

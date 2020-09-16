@@ -23,8 +23,7 @@ var dynamoSvc *dynamodb.DynamoDB
 var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
 
 type incoming struct {
-	Problem []int    `json:"problem"`
-	Answer  []string `json:"answer"`
+	Answer []string `json:"answer"`
 }
 
 type outgoing struct {
@@ -37,6 +36,24 @@ func getRoomStatus(connectionID string) (string, error) {
 		return roomID, err
 	}
 	return rooms.Status(dynamoSvc, roomID)
+}
+
+func getRoomUsers(connectionID string) ([]string, error) {
+	var userList []string
+
+	roomID, err := users.RoomID(dynamoSvc, connectionID)
+	if err != nil {
+		return userList, err
+	}
+	return rooms.Users(dynamoSvc, roomID)
+}
+
+func getRoomProblem(connectionID string) ([]int, error) {
+	roomID, err := users.RoomID(dynamoSvc, connectionID)
+	if err != nil {
+		return []int{}, err
+	}
+	return rooms.Problem(dynamoSvc, roomID)
 }
 
 func checkAnswer(problem []int, answer []string) bool {
@@ -93,6 +110,34 @@ func reply(endpoint string, connectionID string, message string) error {
 	return nil
 }
 
+func judge(endpoint string, connectionID string, isCorrect bool, challengerSolved bool) error {
+	var err error
+
+	if !isCorrect {
+		err = reply(endpoint, connectionID, "WRONG_ANSWER")
+	} else if challengerSolved {
+		err = reply(endpoint, connectionID, "YOU_LOSE")
+	} else {
+		users.SolveProblem(dynamoSvc, connectionID)
+		err = reply(endpoint, connectionID, "YOU_WIN")
+		if err != nil {
+			return err
+		}
+
+		roomUsers, err := getRoomUsers(connectionID)
+		if err != nil {
+			return err
+		}
+
+		if roomUsers[0] == connectionID {
+			err = reply(endpoint, roomUsers[1], "YOU_LOSE")
+		} else {
+			err = reply(endpoint, roomUsers[0], "YOU_LOSE")
+		}
+	}
+	return err
+}
+
 func handler(ctx context.Context, request request) (response, error) {
 	connectionID := request.RequestContext.ConnectionID
 	endpoint := fmt.Sprintf("https://%s/%s",
@@ -104,7 +149,7 @@ func handler(ctx context.Context, request request) (response, error) {
 		fmt.Println(err)
 		return response{StatusCode: 500}, err
 	}
-	if status == rooms.RoomStatusWaiting {
+	if status != rooms.RoomStatusPlaying {
 		return response{StatusCode: 500}, errors.New("ROOM_STATUS_INVALID")
 	}
 
@@ -117,7 +162,12 @@ func handler(ctx context.Context, request request) (response, error) {
 	}
 
 	// check answer
-	isCorrect := checkAnswer(incoming.Problem, incoming.Answer)
+	problem, err := getRoomProblem(connectionID)
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, err
+	}
+	isCorrect := checkAnswer(problem, incoming.Answer)
 
 	// check challenger status
 	challengerSolved, err := checkChallenger(connectionID)
@@ -128,15 +178,7 @@ func handler(ctx context.Context, request request) (response, error) {
 	}
 
 	// reply
-	if !isCorrect {
-		err = reply(endpoint, connectionID, "WRONG_ANSWER")
-	} else if challengerSolved {
-		err = reply(endpoint, connectionID, "YOU_LOSE")
-		ws.Disconnect(agwSvc, endpoint, connectionID)
-	} else {
-		err = reply(endpoint, connectionID, "YOU_WIN")
-		ws.Disconnect(agwSvc, endpoint, connectionID)
-	}
+	err = judge(endpoint, connectionID, isCorrect, challengerSolved)
 	if err != nil {
 		fmt.Println(err)
 		return response{StatusCode: 500}, err
