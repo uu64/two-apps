@@ -120,9 +120,10 @@ func handler(ctx context.Context, request request) (response, error) {
 	// check answer
 	isCorrect := checkAnswer(incoming.Problem, incoming.Answer)
 
-	// check challger status
+	// check challenger status
 	challengerSolved, err := checkChallenger(connectionID)
 	if err != nil {
+		ws.Disconnect(agwSvc, endpoint, connectionID)
 		fmt.Println(err)
 		return response{StatusCode: 500}, err
 	}
@@ -130,21 +131,16 @@ func handler(ctx context.Context, request request) (response, error) {
 	// reply
 	if !isCorrect {
 		err = reply(endpoint, connectionID, "WRONG_ANSWER")
-		if err != nil {
-			return response{StatusCode: 500}, err
-		}
 	} else if challengerSolved {
 		err = reply(endpoint, connectionID, "YOU_LOSE")
-		if err != nil {
-			return response{StatusCode: 500}, err
-		}
 		ws.Disconnect(agwSvc, endpoint, connectionID)
 	} else {
 		err = reply(endpoint, connectionID, "YOU_WIN")
-		if err != nil {
-			return response{StatusCode: 500}, err
-		}
 		ws.Disconnect(agwSvc, endpoint, connectionID)
+	}
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, err
 	}
 
 	return response{StatusCode: 200}, nil
