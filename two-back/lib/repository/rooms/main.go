@@ -23,6 +23,9 @@ type Room struct {
 // RoomStatusWaiting is status of the rooms table item
 var RoomStatusWaiting string = "WAITING"
 
+// RoomStatusPreparing is status of the rooms table item
+var RoomStatusPreparing string = "PREPARING"
+
 // RoomStatusPlaying is status of the rooms table item
 var RoomStatusPlaying string = "PLAYING"
 
@@ -127,7 +130,7 @@ func AddUser(svc *dynamodb.DynamoDB, id string, userID string) error {
 				S: aws.String(userID),
 			},
 			":st": {
-				S: aws.String(RoomStatusPlaying),
+				S: aws.String(RoomStatusWaiting),
 			},
 		},
 		TableName: aws.String(roomTableName),
