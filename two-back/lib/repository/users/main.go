@@ -14,16 +14,12 @@ var userTableName string = "users"
 type User struct {
 	ConnectionID string
 	RoomID       string
+	Solved       bool
 }
 
-// RoomStatusWaiting is status of the rooms table item
-var RoomStatusWaiting string = "WAITING"
+func getItem(svc *dynamodb.DynamoDB, id string) (User, error) {
+	user := User{}
 
-// RoomStatusPlaying is status of the rooms table item
-var RoomStatusPlaying string = "PLAYING"
-
-// RoomID returns the room-id of the room the user belongs to
-func RoomID(svc *dynamodb.DynamoDB, id string) (string, error) {
 	result, err := svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(userTableName),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -33,19 +29,27 @@ func RoomID(svc *dynamodb.DynamoDB, id string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return user, err
 	}
 
 	if result.Item == nil {
-		return "", errors.New("user is not exist")
+		return user, errors.New("user is not exist")
 	}
 
-	item := User{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	if err != nil {
-		return "", err
-	}
-	return item.RoomID, nil
+	err = dynamodbattribute.UnmarshalMap(result.Item, &user)
+	return user, err
+}
+
+// RoomID returns the room-id of the room the user belongs to
+func RoomID(svc *dynamodb.DynamoDB, id string) (string, error) {
+	user, err := getItem(svc, id)
+	return user.RoomID, err
+}
+
+// Solved returns whether the user solved the problem
+func Solved(svc *dynamodb.DynamoDB, id string) (bool, error) {
+	user, err := getItem(svc, id)
+	return user.Solved, err
 }
 
 // Create creates a user
@@ -53,6 +57,7 @@ func Create(svc *dynamodb.DynamoDB, connectionID string, roomID string) error {
 	item := User{
 		ConnectionID: connectionID,
 		RoomID:       roomID,
+		Solved:       false,
 	}
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -83,5 +88,30 @@ func Delete(svc *dynamodb.DynamoDB, id string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// SolveProblem updates "Solved" to true
+func SolveProblem(svc *dynamodb.DynamoDB, id string, userID string) error {
+	_, err := svc.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":s": {
+				BOOL: aws.Bool(true),
+			},
+		},
+		TableName: aws.String(userTableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"ConnectionID": {
+				S: aws.String(id),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set Solved = :s"),
+	})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
