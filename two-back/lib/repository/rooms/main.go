@@ -130,7 +130,7 @@ func AddUser(svc *dynamodb.DynamoDB, id string, userID string) error {
 				S: aws.String(userID),
 			},
 			":st": {
-				S: aws.String(RoomStatusWaiting),
+				S: aws.String(RoomStatusPreparing),
 			},
 		},
 		TableName: aws.String(roomTableName),
@@ -150,16 +150,22 @@ func AddUser(svc *dynamodb.DynamoDB, id string, userID string) error {
 	return nil
 }
 
-// SetProblem sets a problem to the room
-func SetProblem(svc *dynamodb.DynamoDB, id string, problem []int) error {
+// StartGame sets a problem to the room
+func StartGame(svc *dynamodb.DynamoDB, id string, problem []int) error {
 	av, err := dynamodbattribute.Marshal(problem)
 	if err != nil {
 		return err
 	}
 
 	_, err = svc.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#st": aws.String("Status"),
+		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":p": av,
+			":st": {
+				S: aws.String(RoomStatusPlaying),
+			},
 		},
 		TableName: aws.String(roomTableName),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -168,7 +174,7 @@ func SetProblem(svc *dynamodb.DynamoDB, id string, problem []int) error {
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set Problem = :p"),
+		UpdateExpression: aws.String("set Problem = :p, #st = :st"),
 	})
 
 	return err
