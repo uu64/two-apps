@@ -43,13 +43,13 @@ func handler(ctx context.Context, request request) (response, error) {
 	roomID, err := getRoomID(connectionID)
 	if err != nil {
 		fmt.Println(err)
-		return response{StatusCode: 500}, nil
+		return response{StatusCode: 500}, err
 	}
 
 	userList, err := getUsers(roomID)
 	if err != nil {
 		fmt.Println(err)
-		return response{StatusCode: 500}, nil
+		return response{StatusCode: 500}, err
 	}
 
 	endpoint := fmt.Sprintf("https://%s/%s",

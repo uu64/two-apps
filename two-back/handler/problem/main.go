@@ -24,7 +24,7 @@ type response events.APIGatewayProxyResponse
 var dynamoSvc *dynamodb.DynamoDB
 var agwSvc *apigatewaymanagementapi.ApiGatewayManagementApi
 
-type message struct {
+type data struct {
 	Level int `json:"level"`
 }
 
@@ -88,41 +88,6 @@ func onPlaying(endpoint string, connectionID string, level int) error {
 	return nil
 }
 
-func handler(ctx context.Context, request request) (response, error) {
-	connectionID := request.RequestContext.ConnectionID
-	endpoint := fmt.Sprintf("https://%s/%s",
-		request.RequestContext.DomainName, request.RequestContext.Stage)
-
-	// check room status
-	status, err := getRoomStatus(connectionID)
-	if err != nil {
-		fmt.Println(err)
-		return response{StatusCode: 500}, nil
-	}
-
-	if status == rooms.RoomStatusWaiting {
-		err = onWaiting(endpoint, connectionID)
-	}
-
-	if status == rooms.RoomStatusPlaying {
-		var message message
-		err = json.Unmarshal([]byte(request.Body), &message)
-		if err != nil {
-			fmt.Println(err)
-			return response{StatusCode: 500}, nil
-		}
-
-		err = onPlaying(endpoint, connectionID, message.Level)
-	}
-
-	if err != nil {
-		fmt.Println(err)
-		return response{StatusCode: 500}, nil
-	}
-
-	return response{StatusCode: 200}, nil
-}
-
 func createProblem(num int) ([]int, error) {
 	terms := make([]int, num)
 
@@ -146,6 +111,41 @@ func createProblem(num int) ([]int, error) {
 	terms[0] = sum
 
 	return terms, nil
+}
+
+func handler(ctx context.Context, request request) (response, error) {
+	connectionID := request.RequestContext.ConnectionID
+	endpoint := fmt.Sprintf("https://%s/%s",
+		request.RequestContext.DomainName, request.RequestContext.Stage)
+
+	// check room status
+	status, err := getRoomStatus(connectionID)
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, err
+	}
+
+	if status == rooms.RoomStatusWaiting {
+		err = onWaiting(endpoint, connectionID)
+	}
+
+	if status == rooms.RoomStatusPlaying {
+		var data data
+		err = json.Unmarshal([]byte(request.Body), &data)
+		if err != nil {
+			fmt.Println(err)
+			return response{StatusCode: 500}, err
+		}
+
+		err = onPlaying(endpoint, connectionID, data.Level)
+	}
+
+	if err != nil {
+		fmt.Println(err)
+		return response{StatusCode: 500}, err
+	}
+
+	return response{StatusCode: 200}, nil
 }
 
 func init() {

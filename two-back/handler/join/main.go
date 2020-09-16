@@ -63,7 +63,7 @@ func handler(ctx context.Context, request request) (response, error) {
 	messages, err := getMessage()
 	if err != nil {
 		fmt.Println(err)
-		return response{StatusCode: 500}, nil
+		return response{StatusCode: 500}, err
 	}
 
 	var roomID string
@@ -79,13 +79,13 @@ func handler(ctx context.Context, request request) (response, error) {
 	}
 	if err != nil {
 		fmt.Println(err)
-		return response{StatusCode: 500}, nil
+		return response{StatusCode: 500}, err
 	}
 
 	err = addUser(connectionID, roomID)
 	if err != nil {
 		fmt.Println(err)
-		return response{StatusCode: 500}, nil
+		return response{StatusCode: 500}, err
 	}
 
 	return response{StatusCode: 200}, nil
