@@ -17,6 +17,7 @@ type Room struct {
 	Status  string
 	User1ID string
 	User2ID string
+	Problem []int
 }
 
 // RoomStatusWaiting is status of the rooms table item
@@ -60,6 +61,12 @@ func Status(svc *dynamodb.DynamoDB, id string) (string, error) {
 	return room.Status, err
 }
 
+// Problem returns the problem of the room
+func Problem(svc *dynamodb.DynamoDB, id string) ([]int, error) {
+	room, err := getItem(svc, id)
+	return room.Problem, err
+}
+
 // Create creates a room and returns the room-id
 func Create(svc *dynamodb.DynamoDB, userID string) (string, error) {
 	var roomID string
@@ -74,6 +81,7 @@ func Create(svc *dynamodb.DynamoDB, userID string) (string, error) {
 		RoomID:  roomID,
 		Status:  RoomStatusWaiting,
 		User1ID: userID,
+		User2ID: "",
 	}
 
 	av, err := dynamodbattribute.MarshalMap(item)
@@ -137,4 +145,28 @@ func AddUser(svc *dynamodb.DynamoDB, id string, userID string) error {
 	}
 
 	return nil
+}
+
+// SetProblem sets a problem to the room
+func SetProblem(svc *dynamodb.DynamoDB, id string, problem []int) error {
+	av, err := dynamodbattribute.Marshal(problem)
+	if err != nil {
+		return err
+	}
+
+	_, err = svc.UpdateItem(&dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":p": av,
+		},
+		TableName: aws.String(roomTableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"RoomID": {
+				S: aws.String(id),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set Problem = :p"),
+	})
+
+	return err
 }
