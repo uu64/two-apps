@@ -92,7 +92,7 @@ func Delete(svc *dynamodb.DynamoDB, id string) error {
 }
 
 // SolveProblem updates "Solved" to true
-func SolveProblem(svc *dynamodb.DynamoDB, id string, userID string) error {
+func SolveProblem(svc *dynamodb.DynamoDB, id string) error {
 	_, err := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":s": {
