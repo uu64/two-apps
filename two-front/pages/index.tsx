@@ -1,6 +1,7 @@
 import React from "react";
-import Head from "next/head"
-import styles from "../styles/Home.module.css"
+import Head from "next/head";
+import Game from "../components/Game";
+import styles from "../styles/Home.module.css";
 
 const apiEndpoint = "wss://nubmwv3y2g.execute-api.ap-northeast-1.amazonaws.com/dev";
 const level = 4;
@@ -36,7 +37,7 @@ class Home extends React.Component<{}, State> {
   startMatching(level: number) {
     const data = {
       "action": "problem",
-      "level": level
+      "level": level,
     };
     this.socket.send(JSON.stringify(data));
   }
@@ -71,7 +72,7 @@ class Home extends React.Component<{}, State> {
 
   waiting() {
     this.setState({
-      message: "Please waiting..."
+      message: "Please waiting...",
     });
   }
 
@@ -81,13 +82,16 @@ class Home extends React.Component<{}, State> {
       isPlaying: true,
       problem: problem,
     });
-    console.log(problem);
   }
 
   isWrongAnswer() {
     this.setState({
-      message: "Your answer is wrong :-("
+      message: "Your answer is wrong :-(",
     });
+  }
+
+  onChange(answer: string[]) {
+    console.log(answer);
   }
 
   render() {
@@ -100,48 +104,21 @@ class Home extends React.Component<{}, State> {
         </Head>
 
         <main className={styles.main}>
+          {/* Title */}
           <h1 className={styles.title}>2</h1>
           <p className={styles.description}>Lets make 2 !</p>
 
+          {/* Message */}
           <div className={styles.log}>
-            <code className={styles.code}>
-              {message}
-            </code>
+            <code className={styles.code}>{message}</code>
           </div>
 
-          {isPlaying
-            ? "woooooo!"
-            : <div className="loader">Loading...</div>
-          }
-
+          {/* Game */}
           <div className={styles.grid}>
-            <a href="https://nextjs.org/docs" className={styles.card}>
-              <h3>Documentation &rarr;</h3>
-              <p>Find in-depth information about Next.js features and API.</p>
-            </a>
-
-            <a href="https://nextjs.org/learn" className={styles.card}>
-              <h3>Learn &rarr;</h3>
-              <p>Learn about Next.js in an interactive course with quizzes!</p>
-            </a>
-
-            <a
-              href="https://github.com/vercel/next.js/tree/master/examples"
-              className={styles.card}
-            >
-              <h3>Examples &rarr;</h3>
-              <p>Discover and deploy boilerplate example Next.js projects.</p>
-            </a>
-
-            <a
-              href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              className={styles.card}
-            >
-              <h3>Deploy &rarr;</h3>
-              <p>
-                Instantly deploy your Next.js site to a public URL with Vercel.
-              </p>
-            </a>
+            {isPlaying
+              ? <Game problem={problem} onChange={this.onChange} />
+              : <div className="loader">Loading...</div>
+            }
           </div>
         </main>
 

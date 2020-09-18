@@ -1,0 +1,25 @@
+.flexcol {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.mark {
+  color: lightgrey;
+  font-size: 3rem;
+  padding: 0rem 1.5rem;
+}
+
+.mark:hover {
+  cursor: pointer;
+}
+
+.mark input {
+  display: none;
+}
+
+.checked {
+  color: black;
+  font-weight: bold;
+}

@@ -1,0 +1,11 @@
+.flexrow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.equal {
+  font-size: 4rem;
+  padding: 1rem 1.5rem;
+}
