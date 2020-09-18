@@ -29,7 +29,6 @@ const Mark: React.FC<Props> = (props: Props) => {
       </label>
       <label className={`${styles.mark} ${mark === "m" ? styles.checked : ""}`}>
         -
-
         <input
           type="radio"
           name="mark"
