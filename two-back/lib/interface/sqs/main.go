@@ -25,7 +25,7 @@ func ReceiveMessage(svc *sqs.SQS, queueName string) (*sqs.ReceiveMessageOutput, 
 		},
 		QueueUrl:            urlResult.QueueUrl,
 		MaxNumberOfMessages: aws.Int64(1),
-		VisibilityTimeout:   aws.Int64(30),
+		VisibilityTimeout:   aws.Int64(60),
 	})
 
 	return item, err
