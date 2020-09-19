@@ -1,15 +1,17 @@
 import React from "react";
 import Head from "next/head";
+import { MARK } from "../components/MarkInput";
 import Game from "../components/Game";
 import styles from "../styles/Home.module.css";
 
 const apiEndpoint = "wss://nubmwv3y2g.execute-api.ap-northeast-1.amazonaws.com/dev";
-const level = 4;
+const level = 5;
 
 interface State {
   message: string;
   isPlaying: boolean;
   problem: number[];
+  answer: MARK[];
 }
 
 class Home extends React.Component<{}, State> {
@@ -21,6 +23,7 @@ class Home extends React.Component<{}, State> {
       message: "Please waiting...",
       isPlaying: false,
       problem: [],
+      answer: [],
     };
   }
 
@@ -42,6 +45,21 @@ class Home extends React.Component<{}, State> {
     this.socket.send(JSON.stringify(data));
   }
 
+  answer() {
+    const { answer } = this.state;
+    const data = {
+      "action": "solve",
+      "answer": answer,
+    };
+    this.socket.send(JSON.stringify(data));
+  }
+
+  disconnect() {
+    setTimeout(() => {
+      this.socket.close();
+    }, 3000);
+  }
+
   handleMessage(ev: MessageEvent): void {
     const data = JSON.parse(ev.data);
 
@@ -60,10 +78,10 @@ class Home extends React.Component<{}, State> {
         this.isWrongAnswer();
         break;
       case "YOU_WIN":
-        // this.dispatchEvent(new Event("win"));
+        this.win();
         break;
       case "YOU_LOSE":
-        // this.dispatchEvent(new Event("lose"));
+        this.lose();
         break;
       default:
         new Error("Unexpected response");
@@ -76,11 +94,12 @@ class Home extends React.Component<{}, State> {
     });
   }
 
-  startGame(problem: any) {
+  startGame(problem: number[]) {
     this.setState({
       message: "Game start!!!",
       isPlaying: true,
       problem: problem,
+      answer: Array(problem.length - 1).fill("p"),
     });
   }
 
@@ -90,12 +109,28 @@ class Home extends React.Component<{}, State> {
     });
   }
 
-  onChange(answer: string[]) {
-    console.log(answer);
+  win() {
+    this.setState({
+      message: "You win!!! This is disconnected after 3 seconds.",
+    });
+  }
+
+  lose() {
+    this.setState({
+      message: "You lose. This is disconnected after 3 seconds.",
+    });
+  }
+
+  onChange(s: MARK, i: number) {
+    const { answer } = this.state;
+    answer[i] = s;
+    this.setState({
+      answer: answer,
+    });
   }
 
   render() {
-    const { message, isPlaying, problem } = this.state;
+    const { message, isPlaying, problem, answer } = this.state;
     return (
       <div className={styles.container}>
         <Head>
@@ -116,9 +151,12 @@ class Home extends React.Component<{}, State> {
           {/* Game */}
           <div className={styles.grid}>
             {isPlaying
-              ? <Game problem={problem} onChange={this.onChange} />
+              ? <Game problem={problem} answer={answer} onChange={this.onChange.bind(this)} />
               : <div className="loader">Loading...</div>
             }
+          </div>
+          <div className={styles.button} onClick={this.answer.bind(this)}>
+            Answer
           </div>
         </main>
 

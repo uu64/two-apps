@@ -90,6 +90,21 @@
   width: 600px;
 }
 
+.button {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 1rem;
+  margin: 2rem 0rem;
+  color: dodgerblue;
+  border-radius: 10px;
+}
+
+.button:hover {
+  cursor: pointer;
+  color: white;
+  background-color: dodgerblue;
+}
+
 @media (max-width: 600px) {
   .main {
     width: 100%;
