@@ -82,4 +82,4 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: matching
-        MessageRetentionPeriod: 180
+        MessageRetentionPeriod: 60

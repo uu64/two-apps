@@ -44,6 +44,9 @@ class Home extends React.Component<{}, State> {
       "level": level,
     };
     this.socket.send(JSON.stringify(data));
+    setTimeout(() => {
+      this.hasNoChallenger();
+    }, 60000);
   }
 
   answer() {
@@ -122,6 +125,16 @@ class Home extends React.Component<{}, State> {
       message: "You lose. This is disconnected after 3 seconds...",
     });
     this.disconnect();
+  }
+
+  hasNoChallenger() {
+    const { isPlaying } = this.state;
+    if (!isPlaying) {
+      this.setState({
+        message: "There is no challenger. This is disconnected after 3 seconds...",
+      });
+      this.disconnect();
+    }
   }
 
   onChange(s: MARK, i: number) {
