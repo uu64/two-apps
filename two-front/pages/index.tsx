@@ -35,6 +35,7 @@ class Home extends React.Component<{}, State> {
       }, 3000);
     };
     this.socket.onmessage = this.handleMessage.bind(this);
+    this.socket.onclose = this.onClose.bind(this);
   }
 
   startMatching(level: number) {
@@ -111,14 +112,16 @@ class Home extends React.Component<{}, State> {
 
   win() {
     this.setState({
-      message: "You win!!! This is disconnected after 3 seconds.",
+      message: "You win!!! This is disconnected after 3 seconds...",
     });
+    this.disconnect();
   }
 
   lose() {
     this.setState({
-      message: "You lose. This is disconnected after 3 seconds.",
+      message: "You lose. This is disconnected after 3 seconds...",
     });
+    this.disconnect();
   }
 
   onChange(s: MARK, i: number) {
@@ -126,6 +129,12 @@ class Home extends React.Component<{}, State> {
     answer[i] = s;
     this.setState({
       answer: answer,
+    });
+  }
+
+  onClose() {
+    this.setState({
+      message: "This is disconnected.",
     });
   }
 
@@ -155,9 +164,11 @@ class Home extends React.Component<{}, State> {
               : <div className="loader">Loading...</div>
             }
           </div>
-          <div className={styles.button} onClick={this.answer.bind(this)}>
-            Answer
-          </div>
+          {isPlaying &&
+            <div className={styles.button} onClick={this.answer.bind(this)}>
+              Answer
+            </div>
+          }
         </main>
 
         <footer className={styles.footer}>© 2020 uu64</footer>
