@@ -186,7 +186,7 @@ class Home extends React.Component<{}, State> {
         <main className={styles.main}>
           {/* Title */}
           <h1 className={styles.title}>2</h1>
-          <p className={styles.description}>Let's make 2 !</p>
+          <p className={styles.description}>Make 2 earlier than another player !</p>
 
           {/* Game */}
           <div className={styles.grid}>
