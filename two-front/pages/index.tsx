@@ -69,6 +69,7 @@ class Home extends React.Component<{}, State> {
     this.setState({
       message: "This is disconnected.",
     });
+    this.openSnackbar();
   }
 
   handleMessage(ev: MessageEvent): void {
