@@ -1,5 +1,6 @@
 import React from "react";
 import Head from "next/head";
+import Button from "@material-ui/core/Button";
 import Snackbar from "@material-ui/core/Snackbar";
 import Alert from "@material-ui/lab/Alert";
 import { MARK } from "../components/MarkInput";
@@ -201,12 +202,14 @@ class Home extends React.Component<{}, State> {
             }
           </div>
           {isPlaying &&
-            <div
-              className={styles.button}
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
               onClick={this.sendAnswer.bind(this)}
             >
               Answer
-            </div>
+            </Button>
           }
         </main>
 
