@@ -2,4 +2,4 @@
 
 Simple game application using WebSocket.
 
-![screenshot]("/img/screenshot.png")
+![screenshot](/img/screenshot.png)
