@@ -7,8 +7,7 @@ import { MARK } from "../components/MarkInput";
 import Game from "../components/Game";
 import styles from "../styles/Home.module.css";
 
-const apiEndpoint =
-  "wss://nubmwv3y2g.execute-api.ap-northeast-1.amazonaws.com/dev";
+const apiEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT;
 const level = 5;
 
 interface State {
