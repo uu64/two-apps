@@ -1,14 +1,18 @@
 import React from "react";
 import Head from "next/head";
+import Snackbar from "@material-ui/core/Snackbar";
+import Alert from "@material-ui/lab/Alert";
 import { MARK } from "../components/MarkInput";
 import Game from "../components/Game";
 import styles from "../styles/Home.module.css";
 
-const apiEndpoint = "wss://nubmwv3y2g.execute-api.ap-northeast-1.amazonaws.com/dev";
+const apiEndpoint =
+  "wss://nubmwv3y2g.execute-api.ap-northeast-1.amazonaws.com/dev";
 const level = 5;
 
 interface State {
   message: string;
+  openSnackBar: boolean;
   isPlaying: boolean;
   problem: number[];
   answer: MARK[];
@@ -21,6 +25,7 @@ class Home extends React.Component<{}, State> {
     super(props);
     this.state = {
       message: "Please waiting...",
+      openSnackBar: true,
       isPlaying: false,
       problem: [],
       answer: [],
@@ -35,7 +40,7 @@ class Home extends React.Component<{}, State> {
       }, 3000);
     };
     this.socket.onmessage = this.handleMessage.bind(this);
-    this.socket.onclose = this.onClose.bind(this);
+    this.socket.onclose = this.onDisconnect.bind(this);
   }
 
   startMatching(level: number) {
@@ -45,23 +50,25 @@ class Home extends React.Component<{}, State> {
     };
     this.socket.send(JSON.stringify(data));
     setTimeout(() => {
-      this.hasNoChallenger();
+      this.hasNoPlayer();
     }, 60000);
   }
 
-  answer() {
-    const { answer } = this.state;
-    const data = {
-      "action": "solve",
-      "answer": answer,
-    };
-    this.socket.send(JSON.stringify(data));
+  hasNoPlayer() {
+    const { isPlaying } = this.state;
+    if (!isPlaying) {
+      this.setState({
+        message:
+          "There is no player. This is disconnected after 3 seconds ...",
+      });
+      this.disconnect();
+    }
   }
 
-  disconnect() {
-    setTimeout(() => {
-      this.socket.close();
-    }, 3000);
+  onDisconnect() {
+    this.setState({
+      message: "This is disconnected.",
+    });
   }
 
   handleMessage(ev: MessageEvent): void {
@@ -94,47 +101,42 @@ class Home extends React.Component<{}, State> {
 
   waiting() {
     this.setState({
-      message: "Please waiting...",
+      message: "Looking for a player ...",
     });
+    this.openSnackbar();
   }
 
   startGame(problem: number[]) {
     this.setState({
-      message: "Game start!!!",
+      message: "Game start !!!",
       isPlaying: true,
       problem: problem,
       answer: Array(problem.length - 1).fill("p"),
     });
+    this.openSnackbar();
   }
 
   isWrongAnswer() {
     this.setState({
       message: "Your answer is wrong :-(",
     });
+    this.openSnackbar();
   }
 
   win() {
     this.setState({
-      message: "You win!!! This is disconnected after 3 seconds...",
+      message: "You win!!! This is disconnected after 3 seconds ...",
     });
+    this.openSnackbar();
     this.disconnect();
   }
 
   lose() {
     this.setState({
-      message: "You lose. This is disconnected after 3 seconds...",
+      message: "You lose. This is disconnected after 3 seconds ...",
     });
+    this.openSnackbar();
     this.disconnect();
-  }
-
-  hasNoChallenger() {
-    const { isPlaying } = this.state;
-    if (!isPlaying) {
-      this.setState({
-        message: "There is no challenger. This is disconnected after 3 seconds...",
-      });
-      this.disconnect();
-    }
   }
 
   onChange(s: MARK, i: number) {
@@ -145,14 +147,35 @@ class Home extends React.Component<{}, State> {
     });
   }
 
-  onClose() {
+  sendAnswer() {
+    const { answer } = this.state;
+    const data = {
+      "action": "solve",
+      "answer": answer,
+    };
+    this.socket.send(JSON.stringify(data));
+  }
+
+  disconnect() {
+    setTimeout(() => {
+      this.socket.close();
+    }, 3000);
+  }
+
+  openSnackbar() {
     this.setState({
-      message: "This is disconnected.",
+      openSnackBar: true,
+    });
+  }
+
+  closeSnackbar() {
+    this.setState({
+      openSnackBar: false,
     });
   }
 
   render() {
-    const { message, isPlaying, problem, answer } = this.state;
+    const { message, openSnackBar, isPlaying, problem, answer } = this.state;
     return (
       <div className={styles.container}>
         <Head>
@@ -163,26 +186,40 @@ class Home extends React.Component<{}, State> {
         <main className={styles.main}>
           {/* Title */}
           <h1 className={styles.title}>2</h1>
-          <p className={styles.description}>Lets make 2 !</p>
-
-          {/* Message */}
-          <div className={styles.log}>
-            <code className={styles.code}>{message}</code>
-          </div>
+          <p className={styles.description}>Let's make 2 !</p>
 
           {/* Game */}
           <div className={styles.grid}>
             {isPlaying
-              ? <Game problem={problem} answer={answer} onChange={this.onChange.bind(this)} />
+              ? <Game
+                  problem={problem}
+                  answer={answer}
+                  onChange={this.onChange.bind(this)}
+                />
               : <div className="loader">Loading...</div>
             }
           </div>
           {isPlaying &&
-            <div className={styles.button} onClick={this.answer.bind(this)}>
+            <div
+              className={styles.button}
+              onClick={this.sendAnswer.bind(this)}
+            >
               Answer
             </div>
           }
         </main>
+
+        {/* message */}
+        <Snackbar open={openSnackBar} onClose={this.closeSnackbar.bind(this)}>
+          <Alert
+            elevation={6}
+            variant="filled"
+            severity="info"
+            onClose={this.closeSnackbar.bind(this)}
+          >
+            {message}
+          </Alert>
+        </Snackbar>
 
         <footer className={styles.footer}>© 2020 uu64</footer>
       </div>

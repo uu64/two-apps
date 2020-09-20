@@ -62,26 +62,6 @@
   font-size: 1.5rem;
 }
 
-.log {
-  width: 100%;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-.code {
-  background: #fafafa;
-  border-radius: 5px;
-  margin: 1rem;
-  padding: 0.75rem;
-  font-size: 1.1rem;
-  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
-    Bitstream Vera Sans Mono, Courier New, monospace;
-  display: block;
-  /* height: 6rem; */
-  /* line-height: 1.5rem;
-  overflow-y: scroll; */
-}
-
 .grid {
   display: flex;
   align-items: center;
