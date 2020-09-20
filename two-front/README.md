@@ -1,6 +1,9 @@
 ## Setup
 
 ```bash
+# install dependencies
+$ yarn install
+
 # make .env.local and set NEXT_PUBLIC_WS_ENDPOINT
 $ cp .env.local.sample .env.local
 
